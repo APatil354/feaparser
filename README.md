@@ -22,10 +22,9 @@ steps
 
 3. Run python 3_finetune_model.py (LORA and 4 bit quantization so 4GB ram should be enough)
 
-4. Run 4_test_model.py
+4. Run fixed_inference_test.py
 
-5 Run 5_inference.py
-
+5 
 
 This is just starter script may have lots of bugs. 
 
