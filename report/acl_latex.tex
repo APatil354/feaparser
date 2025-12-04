@@ -1,0 +1,369 @@
+\documentclass[11pt]{article}
+
+% Change "review" to "final" to generate the final (sometimes called camera-ready) version.
+% Change to "preprint" to generate a non-anonymous version with page numbers.
+\usepackage[final]{acl}
+
+% Standard package includes
+\usepackage{times}
+\usepackage{latexsym}
+
+% For proper rendering and hyphenation of words containing Latin characters (including in bib files)
+\usepackage[T1]{fontenc}
+% For Vietnamese characters
+% \usepackage[T5]{fontenc}
+% See https://www.latex-project.org/help/documentation/encguide.pdf for other character sets
+
+% This assumes your files are encoded as UTF8
+\usepackage[utf8]{inputenc}
+
+% This is not strictly necessary, and may be commented out,
+% but it will improve the layout of the manuscript,
+% and will typically save some space.
+\usepackage{microtype}
+
+% This is also not strictly necessary, and may be commented out.
+% However, it will improve the aesthetics of text in
+% the typewriter font.
+\usepackage{inconsolata}
+
+%Including images in your LaTeX document requires adding
+%additional package(s)
+\usepackage{graphicx}
+
+\usepackage{listings}
+\usepackage{textgreek}
+
+\lstdefinelanguage{json}{
+    basicstyle=\small\ttfamily,
+    numbers=none,
+    showstringspaces=false,
+    breaklines=true,
+    breakatwhitespace=true,
+    literate=
+      {²}{{\textsuperscript{2}}}{1}
+      {³}{{\textsuperscript{3}}}{1}
+      {ν}{{\textnu}}{1}
+      {·}{{$\cdot$}}{1}
+}
+
+% If the title and author information does not fit in the area allocated, uncomment the following
+%
+%\setlength\titlebox{<dim>}
+%
+% and set <dim> to something 5cm or larger.
+
+\title{Project Check-in: Efficient Generation of Physics Simulation Specs from Natural Language using Parameter-Efficient Fine-Tuning}
+
+\author{
+    Mason Pacenta, Amitkumar Patil, Dennis Zhitenev \\
+    The Ohio State Univeristy \\
+    \texttt{\{pacenta.12, patil.354, zhitenev.2\}@osu.edu}
+}
+
+\begin{document}
+\maketitle
+
+\section{Problem Statement}
+
+The process of setting up physics simulations often requires manually authoring structured configuration files that define objects, their properties, and the forces that act upon them. This process is time-consuming and requires expert knowledge of the specific simulation schema. Large Language Models (LLMs) present a promising avenue for automating this task by translating high-level, natural-language descriptions into these structured formats.
+
+Our initial explorations, which involved prompting a base LLM with a few examples of \texttt{(natural language, simulation spec)} pairs (a technique known as in-context learning, or ICL), yielded unsatisfactory results. Although the model often produces syntactically valid output, it frequently fails to correctly interpret the semantic content of the prompt. This results in specs with incorrect data, missing objects, or improper relationships between objects. Furthermore, this approach suffers from high inference latency, making it impractical for interactive use. The core problem we aim to address is how to adapt a pretrained LLM to reliably and efficiently translate complex natural language scene descriptions into semantically accurate, schema-compliant simulation configurations.
+
+\section{Proposed Approach}
+
+We propose to fine-tune a pretrained LLM using Low-Rank Adaptation (LoRA), a parameter-efficient fine-tuning (PEFT) technique. This approach is designed to directly address the limitations of the ICL baseline. By embedding a deep understanding of the physics schema and the nuances of spatial language into the model's weights, we hypothesize that we can achieve a significant leap in semantic accuracy and a reduction in inference latency.
+
+The first step of the project is to define a target schema for the 3D physics simulations. Then, using this schema, create a dataset to train from. We will utilize a large general purpose LLM to bootstrap an initial set of \texttt{(natural language, simulation spec)} pairs, focusing on scenes of increasing complexity. The pairs will be manually reviewed, corrected, and refined to create a high-quality dataset on the order of a thousand instances.
+
+Next, we will select an appropriate open-weight base model (e.g. Llama, Gemma, DeepSeek, etc.) and use the Hugging Face \texttt{PEFT} library to implement LoRA. We will fine-tune the model on our curated dataset. This phase will involve experimentation with the key LoRA hyperparameters (such as rank) to find an optimal configuration.
+
+Lastly, we will conduct an evaluation of our fine-tuned model against an ICL baseline on a held-out test set. Our evaluation will be multifaceted, including quantitative metrics, qualitative error analysis, and performance benchmarks measuring end-to-end latency. A key part of this phase will be developing evaluation metrics to accurately judge generated specs.
+
+\section{Relation to Prior Work}
+
+As described by \citet{huynh2025largelanguagemodelscode}, the use of LLMs for code generation is a well-established field. Our work fits within the sub-domain of translating natural language to domain specific languages or structured data formats.
+
+Our project is grounded in the comparison between in-context learning and fine-tuning. A similar comparison has been done by \citet{10.1145/3708035.3736091} on popular datasets. We will use their work as guidance when doing our comparison.
+
+Crucially, our project is distinct from recent work like LLMPhy \citep{cherian2024llmphycomplexphysicalreasoning}. LLMPhy uses an LLM and a physics simulator within a feedback loop to perform physical reasoning and estimate physical parameters of an existing scene. In contrast, our project focuses on the one-shot generation of a scene’s initial state from a natural language description. The physics simulator in our workflow is a downstream tool, not an integrated component of the LLM’s reasoning process. Our work therefore addresses a different, although related, challenge in the simulation space.
+
+\citet{shafiq2025powersmallllmsgeometry} show that small fine-tuned language models can accurately generate simulation-ready 3D meshes. They focused on generating various 3D meshes directly from a prompt. However, their approach involves generating a script to generate the 3D mesh rather than directly running the simulation task. Their study showed that performance of the fine tuned models degraded when a single prompt consisted of generating multiple shapes. They attribute the performance loss to the lack of training data with multiple geometries. In contrast to this study, our project will not only generate simulation-ready mesh but also generate boundary conditions and material specifications of the simulation.
+
+\citep{ALEXIADIS2024101721} demonstrate the feasibility of integrating LLMs with geometry/mesh generation tools, as well as multiphysics simulation solvers. Their study shows that this approach can enable non-experts to conduct even advanced simulations by simply describing their simulation intents. Using the OpenAI API for their study, their method showed limited success, especially in complex tasks, such as applying boundary conditions, and they intend to use fine-tuning methods in their future work. In contrast, we intend to use fine-tuning methods such as LoRA to train relatively small base models such as Gemma3:4B, and DeepSeek-R1:8B.
+
+\citet{alrashedy2025generatingcadcodevisionlanguage} focus mainly on generating 3D CAD (Computer-Aided Design) code with vision-language models. They studied 3D object accuracy using different base models and zero-shot vs. few-shot methods. GPT-4 few-shot showed 0.965 accuracy while CodeLlama zero-shot showed 0.70 accuracy. This study clearly shows that 3D objects can be accurately generated using language models. However this study only focuses on geometry creation, whereas we intend to generate full simulation models.
+
+\section{Example Workflow}
+The user enters the following text: \textbf{\textit{"Create a brick made of aluminum and apply 100N loads at points X1, X2, .. Xn. Fix the brick at points A1, A2 ... and run the simulation."}}
+
+X and A are set as arbitrary points here. Our proposed tool will generate a simulation-ready spec. This will be then used by a 3D geometry generation tool, meshing tool, and physics simulation tools. Figure~\ref{fig:LLM Generated Simulation Ready Model} shows the mesh and boundary conditions generated by a Python script.
+
+\begin{figure}[ht!]
+    \centering
+    \includegraphics[width=\columnwidth]{media/Mesh_BC_LOADS.png} 
+    \caption{An example of a mesh that can be generated by downstream tools using a simulation spec}
+    \label{fig:LLM Generated Simulation Ready Model} 
+\end{figure}
+
+The generated spec will be simulated using a Python script that employs solid mechanics models and finite element analysis (not in the scope of this project) to calculate displacement, and mechanical stresses in the model. Figure~\ref{fig:Sim Results} shows an example of this displacement contour plot.
+
+\begin{figure}[ht!]
+      \centering
+      \includegraphics[width=\columnwidth]{media/CAE Results.png}
+      \caption{A displacement plot generated by downstream tools using a simulation spec}
+      \label{fig:Sim Results}
+\end{figure}
+
+\section{Summary}
+
+As described, the goal of this study is to develop a tool in which the user only needs to describe their simulation using plain English, and the required results will be presented. Prior research suggests that language models can be used with in-context learning to generate 3D geometries. Our study will explore the use of fine-tuning and leverage existing Python scripts available to simulate the spec generated by a fine-tuned language model.
+
+\section{Preliminary Results}
+
+\subsection{Schema and Dataset Curation}
+
+We first designed a JSON schema that defines what data needs to be included in specs for the structural simulation. The schema is provided in Listing~\ref{lst:json_schema}. The schema also includes a reference database of material properties like elastic modulus and Poisson's ratio so that these values don't need to be manually specified. This current iteration of the schema only supports relatively simple static analysis (e.g. dynamic/time-dependent loads are not supported).
+
+Next we used two LLMs to generate a dataset of prompts and corresponding JSON specs. We manually created 10 of these pairs and provided them to the LLMs along with the schema. We then had the models generate more of these samples and did random manual checks for accuracy. Using this method, we've generated a dataset of 900 samples, and we aim to generate around 4,000 before beginning fine-tuning.
+
+\subsection{Training Dataset Characteristics}
+
+Our synthetic training dataset comprises 900 curated examples designed to cover diverse FEA modeling scenarios. Table~\ref{tab:dataset_stats} shows the key statistics of the dataset.
+
+\begin{table}[htp]
+\centering
+\caption{Training dataset statistics}
+\label{tab:dataset_stats}
+\begin{tabular}{lcc}
+\hline
+\textbf{Metric} & \textbf{Mean} & \textbf{Range} \\
+\hline
+\hline
+Total Examples & \multicolumn{2}{c}{900} \\
+\hline
+Prompt length (words) & 25.6 & 16 -- 36 \\
+Spec length (characters) & 406 & 368 -- 545 \\
+\hline
+\end{tabular}
+\end{table}
+
+We aimed to include a balanced distribution of boundary conditions and load specifications (as shown in Tables~\ref{tab:bc_types} and~\ref{tab:load_stats} respectively).
+
+\begin{table}[h]
+\centering
+\caption{Distribution of boundary conditions in the dataset}
+\label{tab:bc_types}
+\small
+\begin{tabular}{lc}
+\hline
+\textbf{Type} & \textbf{Percentage} \\
+\hline
+Fixed & 29.1\% \\
+Roller & 24.0\% \\
+Pinned & 23.5\% \\
+Symmetry & 23.5\% \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{Distribution of load specifications in the dataset}
+\label{tab:load_stats}
+\small
+\begin{tabular}{lccr}
+\hline
+\textbf{Type} & \textbf{\%} & \textbf{Range} & \textbf{Mean} \\
+\hline
+Force (N) & 53.7 & 15 -- 8000 & 309 \\
+Pressure (MPa) & 46.3 & 0.4 -- 10 & 3.87 \\
+\hline
+\end{tabular}
+\end{table}
+
+\paragraph{Geometries:} Figure~\ref{fig:geometry_dist} shows the distribution across four geometry types: spheres, cones, cylinders, and boxes. Please note that the current dataset includes only four shapes for simplicity, but our goal is add more complex shapes and features in the final dataset. In addition, we want to include boolean operations in our final dataset and schema (for example cylinder + hemisphere).
+
+\begin{figure}[htp]
+    \centering
+    \includegraphics[width=\columnwidth]{media/geometries_distribution.png}
+    \caption{Distribution of geometries in the dataset}
+    \label{fig:geometry_dist}
+\end{figure}
+
+\paragraph{Materials:} Figure~\ref{fig:material_dist} shows the top 10 materials present in the current dataset, but the schema allows 29 different materials. Our final database will include some of the sparsely used materials also.
+
+\begin{figure}[htp]
+    \centering
+    \includegraphics[width=\columnwidth]{media/materials_distribution.png}
+    \caption{Distribution of materials in the dataset}
+    \label{fig:material_dist}
+\end{figure}
+
+\paragraph{Location Descriptors:} The dataset employs 15+ natural language location descriptors. Figure~\ref{fig:location_dist} shows the most common are \texttt{bottom\_face} (285 instances) for constraints and \texttt{top\_face} (165) for loads. While the distribution of locations is not currently uniform, we aim to provide a uniform distribution in the final dataset.
+
+\begin{figure}[htp]
+    \centering
+    \includegraphics[width=\columnwidth]{media/location_descriptors.png}
+    \caption{Usage of location descriptions in the dataset}
+    \label{fig:location_dist}
+\end{figure}
+
+\subsection{Evaluation Metrics}
+
+An important part of our proposal was developing evaluation metrics to accurately judge the specs generated by our models. We've made significant progress on this goal in our preliminary research by implementing two distinct metrics capable of judging the similarity between two given JSON objects (i.e. the ground-truth and generated specs).
+
+Both of these metrics rely on converting the JSON specs into a tree structure. The root of the trees we construct represents the outermost JSON object, and each child node is labeled with one of the keys in that object. If the value of a given key is another nested object, then its children will be all of the keys of that object. If the value is an array, the children will be \texttt{item\_0}, \texttt{item\_1}, etc. Finally, if the value associated with a key is a primitive, the node for that key will have one child labeled with that primitive value.
+
+The tree generation also takes the schema into account to attempt to make canonical trees that only hold semantically important info. For example, our specs contain optional \texttt{name} and \texttt{description} properties for certain items to make them more readable. However, these strings are difficult to assess since they're written in natural language. They're also not used by the simulation, so they're not very semantically important. In fact, the simulation only uses the values of strings associated with enumerations. As a result, we designed our tree generation algorithm to exclude from the tree any strings not associated with enums (along with their keys).
+
+Another aspect of canonicalization we took into account is the ordering of arrays. Arrays are used in multiple ways in the specs, and in some cases the ordering is semantically important (e.g. positional coordinates), while in other cases it's not (e.g. the list of applied loads). For arrays where order matters, it's important that the order in the generated and ground-truth specs is preserved when comparing them. However, in cases where order is arbitrary, elements should be matched up across the specs, even if their positions are different. To accomplish this, we added a custom \texttt{ordered} key to our schema, and labeled all unordered arrays with \texttt{"ordered": false}. The tree generation code is able to access this value and accordingly sort the arrays to attempt to match up corresponding elements.
+
+\subsubsection{Precision, Recall, and F-score}
+
+For the first metric, we came up with a way to apply precision, recall, and F-score to the JSON specs. To do this, we first implemented an algorithm that outputs every path from root to leaves of a given tree. We then run this algorithm on the trees for the ground-truth and generated specs to get sets of paths for each one. Each of these paths represents a value in the spec and its unique location in the JSON object. With these two sets, we can find which paths exist in both (true positives), which exist only in the generated spec (false positives), and which exist only in the ground truth (false negatives). Finally, we use the amount of true positives, false positives, and false negatives to calculate the precision, recall, and F1 scores. Each of these is then a value between zero and one that represents some aspect of the similarity between the given generated spec and its corresponding ground-truth spec.
+
+In addition to calculating these scores with full root-to-value paths (item scores), we also calculate them with the values excluded (key scores). This way, if a generated spec is similar in structure to the ground truth, but the values are incorrect, the key scores will be high, but the item scores will be low, allowing us to distinguish between a models ability to generate the structure of the specs and its ability to fill in the correct content/values.
+
+\subsubsection{Tree Edit Distance}
+
+Our second metric is based on the tree edit distance algorithm developed by \citet{doi:10.1137/0218082} and implemented in the \texttt{zss} Python module by \citet{Tim2018zss}. In short, the algorithm calculates the cost of transforming one tree into another by removing nodes, inserting nodes, and/or changing labels. In our implementation, the cost of any of these three operations is 1, except in one specific case: if both labels are numbers, the update cost is the relative difference of the two with respect to the larger value (capped at 1). The result is that the label distance between two very similar values is small, so the generated specs aren't scored bad if the values are a little bit off.
+
+For arbitrary trees, the raw edit distance is in the range $[0, \infty]$, but we also wanted a normalized similarity score on a closed interval. To do this, we divide the edit distance by the maximum possible edit distance between the two trees, and subtract that value from 1. Since we cap all three costs (remove, insert, update) at 1, the maximum possible edit distance is the total number of nodes in both trees. The result, then, is a similarity score in the range $[0, 1]$ which can more easily be used to compare accuracy between different pairs of generated and ground-truth specs.
+
+\subsubsection{Other Metrics}
+
+Other metrics we track include the time to generate each spec, whether the generated specs are valid JSON, and whether they conform to our defined schema. These, together with the aforementioned accuracy metrics, allow us to see a detailed picture of how our models are performing.
+
+\subsection{ICL Baseline}
+
+For our baseline, we studied ICL sensitivity with Qwen2.5-Coder-3B. This model has 3 billion parameters and a context window of 32,768 tokens. From the 900 examples in our dataset, we partitioned 720 examples for the ICL pool and 180 samples for evaluating the model. In each evaluation, $k$ samples were randomly picked from the ICL pool and 5 random examples were picked from the evaluation pool.
+
+Table~\ref{tab:icl_summary} and Figure~\ref{fig:icl_performance} show the evaluation results across six values of $k$ (0, 1, 3, 10, 30, and 50). Results show that 3-shot in-context learning has good performance across all of the evaluation metrics and also has the lowest generation time. Performance degrades significantly beyond 3 shots, with both 30-shot and 50-shot configurations failing entirely while incurring substantial computational costs.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{ICL performance summary across different shot counts}
+\label{tab:icl_summary}
+\resizebox{\columnwidth}{!}{
+\begin{tabular}{c|cc|cc|c}
+\hline
+\textbf{Shots} & \textbf{Valid JSON} & \textbf{Schema} & \textbf{Key F1} & \textbf{Item F1} & \textbf{Tree Edit}  \\
+\textbf{($k$)} & \textbf{(\%)} & \textbf{Match (\%)} & & & \textbf{Similarity} \\
+\hline
+\hline
+0  & 60  & 0  & 0.23 & 0.14 & 0.37  \\
+1  & 60  & 20 & 0.49 & 0.46 & 0.56  \\
+3  & \textbf{100} & \textbf{40} & \textbf{0.97} & \textbf{0.93} & \textbf{0.97}  \\
+10 & 40  & 20 & 0.40 & 0.38 & 0.40  \\
+30 & 0   & 0  & 0.00 & 0.00 & 0.00  \\
+50 & 0   & 0  & 0.00 & 0.00 & 0.00  \\
+\hline
+\end{tabular}
+}
+\end{table}
+
+The results show the optimal balance between providing sufficient demonstration examples and avoiding context window saturation is 3-shot. The tree edit similarity of 0.97 indicates good semantic alignment with the ground truth specifications.
+
+\subsubsection{3-Shot ICL: Qualitative Examples}
+
+The following example shows a natural language prompt, the corresponding ground-truth spec (Listing~\ref{lst:icl_example_gt}), and the spec generated by the ICL model given a 3-shot prompt (Listing~\ref{lst:icl_example_generated}).
+
+\paragraph{Input:} \textit{"Create a titanium gr5 box with 59mm x 112mm x 91mm. Pin the bottom left corner and apply 2.5MPa pressure on the outer surface."}
+
+\begin{lstlisting}[
+  language=json,
+  caption={A ground-truth spec from the dataset},
+  label={lst:icl_example_gt}
+]
+{
+  "geometry": {
+    "type": "box",
+    "dimensions": {
+      "length": 59,
+      "width": 112,
+      "height": 91
+    }
+  },
+  "material": {
+    "type": "TITANIUM_GR5"
+  },
+  "boundary_conditions": [{
+    "type": "pinned",
+    "location": {
+      "value": "bottom_left_corner"
+    }
+  }],
+  "loads": [{
+    "type": "pressure",
+    "magnitude": 2500000
+  }]
+}
+\end{lstlisting}
+
+\begin{lstlisting}[
+  language=json,
+  caption={A spec generated by the ICL model given a 3-shot prompt},
+  label={lst:icl_example_generated}
+]
+{
+  "geometry": {
+    "type": "box",
+    "dimensions": {
+      "length": 59,
+      "width": 112,
+      "height": 91
+    }
+  },
+  "material": {
+    "type": "TITANIUM_GR5"
+  },
+  "boundary_conditions": [{
+    "type": "pinned",
+    "location": {
+      "value": "bottom_left_corner"
+    }
+  }],
+  "loads": [{
+    "type": "pressure",
+    "magnitude": 2500000
+  }]
+}
+\end{lstlisting}
+
+This example demonstrates that the model is able to parse the material and all dimensions correctly. It also identified the type of boundary condition as well as the location correctly. While in-context learning shows good accuracy with the current dataset, our goal is allow more complex geometries and boundary conditions in the final dataset.
+
+\section{Next Steps}
+
+Our immediate next step is to continue our current experiments with ICL on a larger set of data (i.e. our full validation dataset). It could also be valuable to research methods of structured generation, so that all generated outputs are guaranteed to match our schema. Additionally, depending on the model's performance with ICL, we may want to generate more complex spec examples to test on. This way, there will be room for improvement when we begin fine-tuning with LoRA. On the note of fine-tuning, that is also something we will begin implementing and experimenting with. For this, we may need to generate more training examples. Lastly, we will continue to tune our evaluation metrics to most accurately represent the quality of generated specs and best match our qualitative inspections.
+
+\bibliography{custom}
+
+\appendix
+
+\begin{figure*}[hp]
+    \centering
+    \includegraphics[width=\textwidth]{media/icl_performance_plot.png}
+    \caption{
+        \textbf{In-context learning performance across shot counts.}
+        (a) Valid JSON Rate
+        (b) Schema Match Rate
+        (c) Key F1 Score
+        (d) Item F1 Score
+        (e) Tree Edit Similarity
+        (f) Average Generation Time
+    }
+    \label{fig:icl_performance}
+\end{figure*}
+
+\onecolumn
+\lstinputlisting[
+    language=json,
+    frame=single,
+    caption={The JSON schema for simulation specs},
+    label={lst:json_schema},
+]{../comprehensive_fea_schema.json}
+\twocolumn
+
+\end{document}
